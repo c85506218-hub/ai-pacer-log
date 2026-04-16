@@ -922,7 +922,8 @@ auth.signInAnonymously().then(function(){
 }).catch(function(e){
   showToast('連線失敗，請重新整理頁面');
   console.error(e);
-});=function(){
+});
+window.jClear=function(){
   ['jf-date','jf-person','jf-summary','jf-issues','jf-action'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('jf-topic').value='';
   document.getElementById('jf-tool').value='';
