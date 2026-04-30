@@ -297,6 +297,7 @@
   .meet-del { background: none; border: none; color: #ccc; cursor: pointer; font-size: 1.1rem; padding: 0 4px; }
   .meet-del:hover { color: var(--red); }
   .m-empty { text-align: center; padding: 2rem; color: var(--gray); font-size: 0.88rem; }
+  @media (max-width:600px) { .m-row, .m-row3 { grid-template-columns: 1fr; } .m-stats { grid-template-columns: repeat(3,1fr); } }
 
   /* ── Journal ── */
   .journal-wrap { background: white; border-radius: 12px; border: 1px solid var(--border); padding: 24px; margin-bottom: 32px; }
@@ -333,6 +334,7 @@
   .j-empty { text-align: center; padding: 2rem; color: var(--gray); font-size: 0.88rem; }
   .j-toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: white; border-radius: 8px; padding: 10px 18px; font-size: 0.85rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 9999; }
   .j-toast.show { opacity: 1; }
+  @media (max-width:600px) { .j-row, .j-row3 { grid-template-columns: 1fr; } .j-stats { grid-template-columns: repeat(3,1fr); } }
 
   /* ── Footer ── */
   .site-footer {
@@ -350,12 +352,12 @@
     .solutions-grid { grid-template-columns: 1fr; }
     .process-steps { flex-direction: column; }
     .step:not(:last-child)::after { content: '↓'; right: auto; left: 50%; top: auto; bottom: -16px; }
-    .m-row, .m-row3, .j-row, .j-row3 { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
-  <!-- ══ Header ══ -->
+
+<!-- ══ Header ══ -->
 <div class="site-header">
   <h1>AI職能導入 推動歷程記錄</h1>
   <p>研究報告解決方案推動 ｜ 陪跑員工作手冊</p>
@@ -779,8 +781,79 @@
         <div class="m-field"><label>出席人員</label><input type="text" id="mf-attendees" placeholder="例：王主任、李專員"></div>
       </div>
       <div class="m-field"><label>討論摘要</label><textarea id="mf-summary" placeholder="討論內容、提出的問題、共識或意見…"></textarea></div>
-      <div class="m-field"><label>決議事項</label><textarea id="mf-decisions" placeholder="明確結論、核准事項、方向確認（無則留空）" style="min-height:56px;">
-        <script>
+      <div class="m-field"><label>決議事項</label><textarea id="mf-decisions" placeholder="明確結論、核准事項、方向確認（無則留空）" style="min-height:56px;"></textarea></div>
+      <div class="m-field"><label>後續追蹤</label><input type="text" id="mf-followup" placeholder="誰負責、何時完成、需要回報的事項"></div>
+      <div class="m-btn-row">
+        <button class="m-btn" onclick="mClear()">清除</button>
+        <button class="m-btn primary" id="meeting-save-btn" onclick="mSave()">儲存紀錄</button>
+      </div>
+    </div>
+
+    <div style="font-size:0.82rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">已記錄會議（<span id="mlog-count">0</span>筆）</div>
+    <div id="mlog-list"></div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+<!-- ══ 陪跑日誌 ══ -->
+<div class="container">
+  <div class="section-title">
+    <div class="icon" style="background:#d1fae5">📓</div>
+    陪跑日誌記錄
+  </div>
+  <div class="journal-wrap">
+    <div class="j-stats">
+      <div class="j-stat"><div class="j-stat-num" id="js-total">—</div><div class="j-stat-label">總陪跑次數</div></div>
+      <div class="j-stat"><div class="j-stat-num" id="js-people">—</div><div class="j-stat-label">陪跑對象數</div></div>
+      <div class="j-stat"><div class="j-stat-num" id="js-issues">—</div><div class="j-stat-label">遭遇問題筆數</div></div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:20px;margin-bottom:20px;">
+      <div style="font-size:0.82rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px;">新增記錄</div>
+      <div class="j-row">
+        <div class="j-field"><label>日期</label><input type="date" id="jf-date"></div>
+        <div class="j-field"><label>陪跑對象（姓名或單位）</label><input type="text" id="jf-person" placeholder="例：人事室王主任"></div>
+      </div>
+      <div class="j-row3">
+        <div class="j-field"><label>業務項目</label>
+          <select id="jf-topic">
+            <option value="">請選擇</option>
+            <option>新手知識庫大禮包</option><option>兼職管理</option><option>補休制度</option>
+            <option>獎懲制度</option><option>宣導作業</option><option>主管導入</option><option>其他</option>
+          </select>
+        </div>
+        <div class="j-field"><label>使用工具</label>
+          <select id="jf-tool">
+            <option value="">請選擇</option>
+            <option>NotebookLM</option><option>Copilot</option><option>Claude</option>
+            <option>ChatGPT</option><option>多工具</option><option>其他</option>
+          </select>
+        </div>
+        <div class="j-field"><label>進展狀況</label>
+          <select id="jf-status">
+            <option value="順利">順利</option><option value="尚可">尚可</option><option value="待改善">待改善</option>
+          </select>
+        </div>
+      </div>
+      <div class="j-field"><label>陪跑摘要</label><textarea id="jf-summary" placeholder="本次操作內容、討論重點、完成事項…"></textarea></div>
+      <div class="j-field"><label>遭遇問題</label><textarea id="jf-issues" placeholder="AI回答錯誤、操作困難、資料問題等（無則留空）" style="min-height:52px;"></textarea></div>
+      <div class="j-field"><label>後續行動</label><input type="text" id="jf-action" placeholder="下次需要跟進的事項"></div>
+      <div class="j-btn-row">
+        <button class="j-btn" onclick="jClear()">清除</button>
+        <button class="j-btn primary" onclick="jSave()">儲存記錄</button>
+      </div>
+    </div>
+    <div style="font-size:0.82rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">已記錄日誌（<span id="jlog-count">—</span>筆）</div>
+    <div id="jlog-list"><div class="j-empty">載入中…</div></div>
+  </div>
+</div>
+
+<div class="j-toast" id="j-toast"></div>
+
+<script>
 // ── Firebase 初始化 ──
 const firebaseConfig = {
   apiKey: "AIzaSyBEAddCvJVt1Z606uDlURg3AsZ2ns3Jxfw",
@@ -802,23 +875,8 @@ function showToast(msg){
 
 // ══ 陪跑日誌 ══
 var jCol = db.collection('pacer_logs');
-var jEditingId = null;
 
 function statusTag(s){ if(s==='順利') return 'green'; if(s==='待改善') return 'orange'; return 'gray'; }
-
-function jUpdateLabel(){
-  var btn=document.getElementById('journal-save-btn');
-  var lbl=document.getElementById('journal-form-label');
-  if(jEditingId){ 
-    btn.textContent='更新紀錄'; 
-    lbl.textContent='編輯陪跑日誌'; 
-    lbl.style.color='#2563eb'; 
-  } else { 
-    btn.textContent='儲存記錄'; 
-    lbl.textContent='新增記錄'; 
-    lbl.style.color=''; 
-  }
-}
 
 function jRender(docs){
   var list=document.getElementById('jlog-list');
@@ -840,10 +898,8 @@ function jRender(docs){
         '<div class="log-person">'+(log.person||'未填寫對象')+'</div>'+
         '<div class="log-date">'+(log.date||'')+'</div>'+
       '</div>'+
-      '<div style="display:flex;gap:6px;align-items:center;">'+
-        '<button class="j-btn" style="padding:4px 12px;font-size:0.78rem;" onclick="jEdit(\''+log._id+'\')">編輯</button>'+
-        '<button class="log-del" onclick="jDelete(\''+log._id+'\')" title="刪除">×</button>'+
-      '</div></div>'+
+      '<button class="log-del" onclick="jDelete(\''+log._id+'\')" title="刪除">×</button>'+
+      '</div>'+
       (log.summary?'<div class="log-body">'+log.summary+'</div>':'')+
       (log.issues?'<div class="log-issue">⚠️ '+log.issues+'</div>':'')+
       (log.action?'<div class="log-action">➡ 後續：'+log.action+'</div>':'')+
@@ -851,30 +907,28 @@ function jRender(docs){
   }).join('');
 }
 
+// ══ 匿名登入後啟動資料監聽 ══
+auth.signInAnonymously().then(function(){
+  // 陪跑日誌監聽
+  jCol.orderBy('ts','desc').onSnapshot(function(snap){
+    var docs=snap.docs.map(function(d){ return Object.assign({_id:d.id},d.data()); });
+    jRender(docs);
+  });
+  // 會議紀錄監聽
+  mCol.orderBy('ts','desc').onSnapshot(function(snap){
+    var docs=snap.docs.map(function(d){ return Object.assign({_id:d.id},d.data()); });
+    mRender(docs);
+  });
+}).catch(function(e){
+  showToast('連線失敗，請重新整理頁面');
+  console.error(e);
+});
 window.jClear=function(){
   ['jf-date','jf-person','jf-summary','jf-issues','jf-action'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('jf-topic').value='';
   document.getElementById('jf-tool').value='';
   document.getElementById('jf-status').value='順利';
-  jEditingId=null; jUpdateLabel();
 };
-
-window.jEdit=function(id){
-  jCol.doc(id).get().then(function(doc){
-    var log=doc.data();
-    document.getElementById('jf-date').value=log.date||'';
-    document.getElementById('jf-person').value=log.person||'';
-    document.getElementById('jf-topic').value=log.topic||'';
-    document.getElementById('jf-tool').value=log.tool||'';
-    document.getElementById('jf-status').value=log.status||'順利';
-    document.getElementById('jf-summary').value=log.summary||'';
-    document.getElementById('jf-issues').value=log.issues||'';
-    document.getElementById('jf-action').value=log.action||'';
-    jEditingId=id; jUpdateLabel();
-    document.getElementById('jf-person').scrollIntoView({behavior:'smooth',block:'center'});
-  });
-};
-
 window.jSave=function(){
   var person=document.getElementById('jf-person').value.trim();
   if(!person){ showToast('請填寫陪跑對象'); return; }
@@ -889,20 +943,12 @@ window.jSave=function(){
     action:document.getElementById('jf-action').value.trim(),
     ts:Date.now()
   };
-  var p = jEditingId ? jCol.doc(jEditingId).set(log) : jCol.add(log);
-  p.then(function(){ 
-    jClear(); 
-    showToast(jEditingId?'已更新 ✓':'已儲存 ✓'); 
-    jEditingId=null; 
-    jUpdateLabel(); 
-  }).catch(function(e){ showToast('儲存失敗：'+e.message); });
+  jCol.add(log).then(function(){ jClear(); showToast('已儲存 ✓'); }).catch(function(e){ showToast('儲存失敗：'+e.message); });
 };
-
 window.jDelete=function(id){
   if(!confirm('確定刪除這筆陪跑日誌？')) return;
   jCol.doc(id).delete().then(function(){ showToast('已刪除'); });
 };
-
 document.getElementById('jf-date').value=new Date().toISOString().split('T')[0];
 
 // ══ 會議紀錄 ══
@@ -943,14 +989,12 @@ function mUpdateLabel(){
   if(mEditingId){ btn.textContent='更新紀錄'; lbl.textContent='編輯會議紀錄'; lbl.style.color='#7c3aed'; }
   else { btn.textContent='儲存紀錄'; lbl.textContent='新增會議紀錄'; lbl.style.color=''; }
 }
-
 window.mClear=function(){
   ['mf-date','mf-title','mf-attendees','mf-summary','mf-decisions','mf-followup'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('mf-with').value='';
   document.getElementById('mf-topic').value='';
   mEditingId=null; mUpdateLabel();
 };
-
 window.mEdit=function(id){
   mCol.doc(id).get().then(function(doc){
     var log=doc.data();
@@ -966,7 +1010,6 @@ window.mEdit=function(id){
     document.getElementById('mf-title').scrollIntoView({behavior:'smooth',block:'center'});
   });
 };
-
 window.mSave=function(){
   var title=document.getElementById('mf-title').value.trim();
   if(!title){ showToast('請填寫會議主題'); return; }
@@ -985,28 +1028,11 @@ window.mSave=function(){
   p.then(function(){ mClear(); showToast(mEditingId?'已更新 ✓':'會議紀錄已儲存 ✓'); mEditingId=null; mUpdateLabel(); })
    .catch(function(e){ showToast('儲存失敗：'+e.message); });
 };
-
 window.mDelete=function(id){
   if(!confirm('確定刪除這筆會議紀錄？')) return;
   mCol.doc(id).delete().then(function(){ showToast('已刪除'); });
 };
-
 document.getElementById('mf-date').value=new Date().toISOString().split('T')[0];
-
-// ══ 匿名登入後啟動資料監聽 ══
-auth.signInAnonymously().then(function(){
-  jCol.orderBy('ts','desc').onSnapshot(function(snap){
-    var docs=snap.docs.map(function(d){ return Object.assign({_id:d.id},d.data()); });
-    jRender(docs);
-  });
-  mCol.orderBy('ts','desc').onSnapshot(function(snap){
-    var docs=snap.docs.map(function(d){ return Object.assign({_id:d.id},d.data()); });
-    mRender(docs);
-  });
-}).catch(function(e){
-  showToast('連線失敗，請重新整理頁面');
-  console.error(e);
-});
 </script>
 
 <div class="site-footer">
@@ -1015,4 +1041,3 @@ auth.signInAnonymously().then(function(){
 
 </body>
 </html>
-        
