@@ -799,23 +799,84 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
+<!-- ══ 陪跑日誌 ══ -->
+<div class="container">
+  <div class="section-title">
+    <div class="icon" style="background:#d1fae5">📓</div>
+    陪跑日誌記錄
+  </div>
+  <div class="journal-wrap">
+    <div class="j-stats">
+      <div class="j-stat"><div class="j-stat-num" id="js-total">—</div><div class="j-stat-label">總陪跑次數</div></div>
+      <div class="j-stat"><div class="j-stat-num" id="js-people">—</div><div class="j-stat-label">陪跑對象數</div></div>
+      <div class="j-stat"><div class="j-stat-num" id="js-issues">—</div><div class="j-stat-label">遭遇問題筆數</div></div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:20px;margin-bottom:20px;">
+      <div style="font-size:0.82rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px;">新增記錄</div>
+      <div class="j-row">
+        <div class="j-field"><label>日期</label><input type="date" id="jf-date"></div>
+        <div class="j-field"><label>陪跑對象（姓名或單位）</label><input type="text" id="jf-person" placeholder="例：人事室王主任"></div>
+      </div>
+      <div class="j-row3">
+        <div class="j-field"><label>業務項目</label>
+          <select id="jf-topic">
+            <option value="">請選擇</option>
+            <option>新手知識庫大禮包</option><option>兼職管理</option><option>補休制度</option>
+            <option>獎懲制度</option><option>宣導作業</option><option>主管導入</option><option>其他</option>
+          </select>
+        </div>
+        <div class="j-field"><label>使用工具</label>
+          <select id="jf-tool">
+            <option value="">請選擇</option>
+            <option>NotebookLM</option><option>Copilot</option><option>Claude</option>
+            <option>ChatGPT</option><option>多工具</option><option>其他</option>
+          </select>
+        </div>
+        <div class="j-field"><label>進展狀況</label>
+          <select id="jf-status">
+            <option value="順利">順利</option><option value="尚可">尚可</option><option value="待改善">待改善</option>
+          </select>
+        </div>
+      </div>
+      <div class="j-field"><label>陪跑摘要</label><textarea id="jf-summary" placeholder="本次操作內容、討論重點、完成事項…"></textarea></div>
+      <div class="j-field"><label>遭遇問題</label><textarea id="jf-issues" placeholder="AI回答錯誤、操作困難、資料問題等（無則留空）" style="min-height:52px;"></textarea></div>
+      <div class="j-field"><label>後續行動</label><input type="text" id="jf-action" placeholder="下次需要跟進的事項"></div>
+      <div class="j-btn-row">
+        <button class="j-btn" onclick="jClear()">清除</button>
+        <button class="j-btn primary" onclick="jSave()">儲存記錄</button>
+      </div>
+    </div>
+    <div style="font-size:0.82rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">已記錄日誌（<span id="jlog-count">—</span>筆）</div>
+    <div id="jlog-list"><div class="j-empty">載入中…</div></div>
+  </div>
+</div>
+
+<div class="j-toast" id="j-toast"></div>
+
+<script>
+// ── Firebase 初始化 ──
+const firebaseConfig = {
+  apiKey: "AIzaSyBEAddCvJVt1Z606uDlURg3AsZ2ns3Jxfw",
+  authDomain: "ai-pacer-log.firebaseapp.com",
+  projectId: "ai-pacer-log",
+  storageBucket: "ai-pacer-log.firebasestorage.app",
+  messagingSenderId: "629975239314",
+  appId: "1:629975239314:web:e70693fccdf5a786e9744b"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+function showToast(msg){
+  var t=document.getElementById('j-toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); },2200);
+}
+
 // ══ 陪跑日誌 ══
 var jCol = db.collection('pacer_logs');
-var jEditingId = null;
 
 function statusTag(s){ if(s==='順利') return 'green'; if(s==='待改善') return 'orange'; return 'gray'; }
-
-function jUpdateLabel(){
-  var btn=document.querySelector('.j-btn.primary');
-  var lbl=document.querySelector('.journal-wrap .j-field').closest('div').previousElementSibling;
-  if(jEditingId){ 
-    btn.textContent='更新紀錄'; 
-    if(lbl) { lbl.textContent='編輯陪跑日誌'; lbl.style.color='#2563eb'; }
-  } else { 
-    btn.textContent='儲存記錄'; 
-    if(lbl) { lbl.textContent='新增記錄'; lbl.style.color=''; }
-  }
-}
 
 function jRender(docs){
   var list=document.getElementById('jlog-list');
@@ -837,10 +898,8 @@ function jRender(docs){
         '<div class="log-person">'+(log.person||'未填寫對象')+'</div>'+
         '<div class="log-date">'+(log.date||'')+'</div>'+
       '</div>'+
-      '<div style="display:flex;gap:6px;align-items:center;">'+
-        '<button class="j-btn" style="padding:4px 12px;font-size:0.78rem;" onclick="jEdit(\''+log._id+'\')">編輯</button>'+
-        '<button class="log-del" onclick="jDelete(\''+log._id+'\')" title="刪除">×</button>'+
-      '</div></div>'+
+      '<button class="log-del" onclick="jDelete(\''+log._id+'\')" title="刪除">×</button>'+
+      '</div>'+
       (log.summary?'<div class="log-body">'+log.summary+'</div>':'')+
       (log.issues?'<div class="log-issue">⚠️ '+log.issues+'</div>':'')+
       (log.action?'<div class="log-action">➡ 後續：'+log.action+'</div>':'')+
@@ -848,30 +907,28 @@ function jRender(docs){
   }).join('');
 }
 
+// ══ 匿名登入後啟動資料監聽 ══
+auth.signInAnonymously().then(function(){
+  // 陪跑日誌監聽
+  jCol.orderBy('ts','desc').onSnapshot(function(snap){
+    var docs=snap.docs.map(function(d){ return Object.assign({_id:d.id},d.data()); });
+    jRender(docs);
+  });
+  // 會議紀錄監聽
+  mCol.orderBy('ts','desc').onSnapshot(function(snap){
+    var docs=snap.docs.map(function(d){ return Object.assign({_id:d.id},d.data()); });
+    mRender(docs);
+  });
+}).catch(function(e){
+  showToast('連線失敗，請重新整理頁面');
+  console.error(e);
+});
 window.jClear=function(){
   ['jf-date','jf-person','jf-summary','jf-issues','jf-action'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('jf-topic').value='';
   document.getElementById('jf-tool').value='';
   document.getElementById('jf-status').value='順利';
-  jEditingId=null; jUpdateLabel();
 };
-
-window.jEdit=function(id){
-  jCol.doc(id).get().then(function(doc){
-    var log=doc.data();
-    document.getElementById('jf-date').value=log.date||'';
-    document.getElementById('jf-person').value=log.person||'';
-    document.getElementById('jf-topic').value=log.topic||'';
-    document.getElementById('jf-tool').value=log.tool||'';
-    document.getElementById('jf-status').value=log.status||'順利';
-    document.getElementById('jf-summary').value=log.summary||'';
-    document.getElementById('jf-issues').value=log.issues||'';
-    document.getElementById('jf-action').value=log.action||'';
-    jEditingId=id; jUpdateLabel();
-    document.getElementById('jf-person').scrollIntoView({behavior:'smooth',block:'center'});
-  });
-};
-
 window.jSave=function(){
   var person=document.getElementById('jf-person').value.trim();
   if(!person){ showToast('請填寫陪跑對象'); return; }
@@ -886,15 +943,8 @@ window.jSave=function(){
     action:document.getElementById('jf-action').value.trim(),
     ts:Date.now()
   };
-  var p = jEditingId ? jCol.doc(jEditingId).set(log) : jCol.add(log);
-  p.then(function(){ 
-    jClear(); 
-    showToast(jEditingId?'已更新 ✓':'已儲存 ✓'); 
-    jEditingId=null; 
-    jUpdateLabel(); 
-  }).catch(function(e){ showToast('儲存失敗：'+e.message); });
+  jCol.add(log).then(function(){ jClear(); showToast('已儲存 ✓'); }).catch(function(e){ showToast('儲存失敗：'+e.message); });
 };
-
 window.jDelete=function(id){
   if(!confirm('確定刪除這筆陪跑日誌？')) return;
   jCol.doc(id).delete().then(function(){ showToast('已刪除'); });
