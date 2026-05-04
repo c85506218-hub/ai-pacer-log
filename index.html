@@ -1061,11 +1061,21 @@ window.mDelete=function(id){
   mCol.doc(id).delete().then(function(){ showToast('已刪除'); });
 };
 document.getElementById('mf-date').value=new Date().toISOString().split('T')[0];
+
+// ══ 匿名登入後啟動資料監聽 ══
+auth.signInAnonymously().then(function(){
+  jCol.orderBy('ts','desc').onSnapshot(function(snap){
+    var docs=snap.docs.map(function(d){ return Object.assign({_id:d.id},d.data()); });
+    jRender(docs);
+  });
+  mCol.orderBy('ts','desc').onSnapshot(function(snap){
+    var docs=snap.docs.map(function(d){ return Object.assign({_id:d.id},d.data()); });
+    mRender(docs);
+  });
+}).catch(function(e){
+  showToast('連線失敗，請重新整理頁面');
+  console.error(e);
+});
 </script>
 
 <div class="site-footer">
-  AI職能導入推動歷程記錄 ｜ 陪跑員工作手冊 ｜ 2026
-</div>
-
-</body>
-</html>
