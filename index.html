@@ -676,7 +676,7 @@
         <label class="check-item"><input type="checkbox"> 資料上傳前完成去識別化</label>
         <label class="check-item"><input type="checkbox"> AI輸出品質抽樣驗證</label>
         <label class="check-item"><input type="checkbox"> 錯誤案例登錄</label>
-        <label class="check-item"><input type="checkbox"> 主管示範場次安排</label>
+        <label class="check-item"><input type="checkbox"> 陪跑員示範場次安排</label>
       </div>
     </div>
     <div class="check-group">
@@ -874,9 +874,25 @@ function showToast(msg){
 }
 
 // ══ 陪跑日誌 ══
+// ══ 陪跑日誌 ══
 var jCol = db.collection('pacer_logs');
+var jEditingId = null;
 
 function statusTag(s){ if(s==='順利') return 'green'; if(s==='待改善') return 'orange'; return 'gray'; }
+
+function jUpdateLabel(){
+  var btn=document.getElementById('journal-save-btn');
+  var lbl=document.getElementById('journal-form-label');
+  if(jEditingId){ 
+    btn.textContent='更新紀錄'; 
+    lbl.textContent='編輯陪跑日誌'; 
+    lbl.style.color='#2563eb'; 
+  } else { 
+    btn.textContent='儲存記錄'; 
+    lbl.textContent='新增記錄'; 
+    lbl.style.color=''; 
+  }
+}
 
 function jRender(docs){
   var list=document.getElementById('jlog-list');
@@ -898,8 +914,10 @@ function jRender(docs){
         '<div class="log-person">'+(log.person||'未填寫對象')+'</div>'+
         '<div class="log-date">'+(log.date||'')+'</div>'+
       '</div>'+
-      '<button class="log-del" onclick="jDelete(\''+log._id+'\')" title="刪除">×</button>'+
-      '</div>'+
+      '<div style="display:flex;gap:6px;align-items:center;">'+
+        '<button class="j-btn" style="padding:4px 12px;font-size:0.78rem;" onclick="jEdit(\''+log._id+'\')">編輯</button>'+
+        '<button class="log-del" onclick="jDelete(\''+log._id+'\')" title="刪除">×</button>'+
+      '</div></div>'+
       (log.summary?'<div class="log-body">'+log.summary+'</div>':'')+
       (log.issues?'<div class="log-issue">⚠️ '+log.issues+'</div>':'')+
       (log.action?'<div class="log-action">➡ 後續：'+log.action+'</div>':'')+
@@ -907,28 +925,30 @@ function jRender(docs){
   }).join('');
 }
 
-// ══ 匿名登入後啟動資料監聽 ══
-auth.signInAnonymously().then(function(){
-  // 陪跑日誌監聽
-  jCol.orderBy('ts','desc').onSnapshot(function(snap){
-    var docs=snap.docs.map(function(d){ return Object.assign({_id:d.id},d.data()); });
-    jRender(docs);
-  });
-  // 會議紀錄監聽
-  mCol.orderBy('ts','desc').onSnapshot(function(snap){
-    var docs=snap.docs.map(function(d){ return Object.assign({_id:d.id},d.data()); });
-    mRender(docs);
-  });
-}).catch(function(e){
-  showToast('連線失敗，請重新整理頁面');
-  console.error(e);
-});
 window.jClear=function(){
   ['jf-date','jf-person','jf-summary','jf-issues','jf-action'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('jf-topic').value='';
   document.getElementById('jf-tool').value='';
   document.getElementById('jf-status').value='順利';
+  jEditingId=null; jUpdateLabel();
 };
+
+window.jEdit=function(id){
+  jCol.doc(id).get().then(function(doc){
+    var log=doc.data();
+    document.getElementById('jf-date').value=log.date||'';
+    document.getElementById('jf-person').value=log.person||'';
+    document.getElementById('jf-topic').value=log.topic||'';
+    document.getElementById('jf-tool').value=log.tool||'';
+    document.getElementById('jf-status').value=log.status||'順利';
+    document.getElementById('jf-summary').value=log.summary||'';
+    document.getElementById('jf-issues').value=log.issues||'';
+    document.getElementById('jf-action').value=log.action||'';
+    jEditingId=id; jUpdateLabel();
+    document.getElementById('jf-person').scrollIntoView({behavior:'smooth',block:'center'});
+  });
+};
+
 window.jSave=function(){
   var person=document.getElementById('jf-person').value.trim();
   if(!person){ showToast('請填寫陪跑對象'); return; }
@@ -943,12 +963,20 @@ window.jSave=function(){
     action:document.getElementById('jf-action').value.trim(),
     ts:Date.now()
   };
-  jCol.add(log).then(function(){ jClear(); showToast('已儲存 ✓'); }).catch(function(e){ showToast('儲存失敗：'+e.message); });
+  var p = jEditingId ? jCol.doc(jEditingId).set(log) : jCol.add(log);
+  p.then(function(){ 
+    jClear(); 
+    showToast(jEditingId?'已更新 ✓':'已儲存 ✓'); 
+    jEditingId=null; 
+    jUpdateLabel(); 
+  }).catch(function(e){ showToast('儲存失敗：'+e.message); });
 };
+
 window.jDelete=function(id){
   if(!confirm('確定刪除這筆陪跑日誌？')) return;
   jCol.doc(id).delete().then(function(){ showToast('已刪除'); });
 };
+
 document.getElementById('jf-date').value=new Date().toISOString().split('T')[0];
 
 // ══ 會議紀錄 ══
