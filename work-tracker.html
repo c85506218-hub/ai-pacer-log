@@ -19,7 +19,47 @@
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
-.app { max-width: 720px; margin: 0 auto; padding: 0 16px 80px; }
+.app { max-width: 1280px; margin: 0 auto; padding: 0 16px 80px; }
+.main-layout { display: flex; gap: 24px; align-items: flex-start; }
+.tasks-col { flex: 1; min-width: 0; }
+.cal-panel { width: 360px; flex-shrink: 0; position: sticky; top: 126px; display: flex; flex-direction: column; gap: 12px; }
+.cal-box { background: white; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.cal-hd { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.cal-hd-title { font-size: 14px; font-weight: 700; }
+.cal-nav { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); width: 28px; height: 28px; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; color: var(--text2); line-height: 1; }
+.cal-nav:hover { background: var(--surface2); }
+.cal-grid { padding: 8px 10px 10px; }
+.cal-dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 2px; }
+.cal-dow span { text-align: center; font-size: 11px; font-weight: 700; color: var(--text3); padding: 4px 0; }
+.cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-day { min-height: 44px; border-radius: 6px; padding: 3px 2px; }
+.cal-day.today { background: var(--blue-bg); }
+.cal-day-num { font-size: 11px; font-weight: 600; color: var(--text2); text-align: center; line-height: 1.8; }
+.cal-day.other-month .cal-day-num { opacity: 0.25; }
+.cal-day.today .cal-day-num { color: var(--blue-text); font-weight: 800; }
+.cal-day.red-day .cal-day-num { color: #b91c1c; }
+.cal-day.today.red-day .cal-day-num { color: var(--blue-text); }
+.cal-dots { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; padding: 1px 0; }
+.cal-dot { width: 8px; height: 8px; border-radius: 50%; cursor: pointer; transition: transform 0.12s; flex-shrink: 0; }
+.cal-dot:hover { transform: scale(1.5); }
+.cal-dot.done { opacity: 0.3; }
+.cal-day:not(.other-month) { cursor: pointer; }
+.cal-day:not(.other-month):hover { background: var(--surface2); }
+.cal-day.today:hover { background: #d4e7f7; }
+.cal-holiday { font-size: 9px; color: #b91c1c; text-align: center; line-height: 1.3; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; }
+.upcoming-box { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.upcoming-hd { font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 8px; }
+.upcoming-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.upcoming-item:last-child { border-bottom: none; }
+.upcoming-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.upcoming-info { flex: 1; min-width: 0; }
+.upcoming-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.upcoming-name.done { text-decoration: line-through; color: var(--text3); }
+.upcoming-date { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.upcoming-tog { background: none; border: 1px solid var(--border); cursor: pointer; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-family: inherit; white-space: nowrap; color: var(--text2); }
+.upcoming-tog:hover { background: var(--surface2); }
+.upcoming-empty { font-size: 12px; color: var(--text3); text-align: center; padding: 8px 0; }
+@media (max-width: 960px) { .main-layout { flex-direction: column; } .cal-panel { width: 100%; position: static; } }
 .header { position: sticky; top: 0; z-index: 50; background: var(--bg); padding: 16px 0 12px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
 .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .header-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
@@ -104,14 +144,21 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div class="header-top">
       <div class="header-title">工作事項追蹤</div>
       <div class="header-actions">
-        <button class="btn" id="resetBtn" style="color:#A32D2D;border-color:#A32D2D">重置資料</button>
         <button class="btn" id="manageBtn">管理類別</button>
         <button class="btn btn-primary" id="addBtn">＋ 新增</button>
       </div>
     </div>
     <div class="filter-row" id="filterRow"></div>
   </div>
-  <div id="sections"></div>
+  <div class="main-layout">
+    <div class="tasks-col">
+      <div id="sections"></div>
+    </div>
+    <div class="cal-panel">
+      <div id="calPanel"></div>
+      <div id="upcomingPanel"></div>
+    </div>
+  </div>
 </div>
 <div id="modalArea"></div>
 
@@ -142,48 +189,37 @@ let showModal = null;
 let presetCat = null;
 let expanded = new Set();
 let uid = null;
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let presetDate = null;
+
+const HOLIDAYS = {
+  '2025-01-01':'元旦','2025-01-27':'除夕','2025-01-28':'春節','2025-01-29':'春節','2025-01-30':'春節',
+  '2025-02-28':'和平紀念日','2025-04-03':'兒童節補假','2025-04-04':'兒童節','2025-05-01':'勞動節',
+  '2025-05-31':'端午節','2025-10-06':'中秋節','2025-10-10':'國慶日',
+  '2026-01-01':'元旦','2026-02-16':'除夕','2026-02-17':'春節','2026-02-18':'春節','2026-02-19':'春節',
+  '2026-02-28':'和平紀念日','2026-04-04':'兒童節','2026-04-05':'清明節','2026-05-01':'勞動節',
+  '2026-06-19':'端午節','2026-10-03':'中秋節','2026-10-10':'國慶日',
+  '2027-01-01':'元旦','2027-02-05':'除夕','2027-02-06':'春節','2027-02-07':'春節','2027-02-08':'春節',
+  '2027-02-28':'和平紀念日','2027-04-04':'兒童節','2027-04-05':'清明節','2027-05-01':'勞動節',
+  '2027-06-09':'端午節','2027-09-22':'中秋節','2027-10-10':'國慶日',
+};
 
 function defaultState() {
   return {
     categories: [
       { id: 'c1', name: '役男業務', color: '#185FA5' },
-      { id: 'c2', name: '5月-佐升正', color: '#0F6E56' },
-      { id: 'c3', name: '6月-性平業務', color: '#993556' },
-      { id: 'c4', name: '8月-EAP業務', color: '#534AB7' },
-      { id: 'c5', name: '其他', color: '#888780' },
-      { id: 'c6', name: '人事考試人員', color: '#A32D2D' },
+      { id: 'c2', name: '佐升正', color: '#0F6E56' },
+      { id: 'c3', name: '性平業務', color: '#993556' },
+      { id: 'c4', name: 'EAP業務', color: '#534AB7' },
     ],
     tasks: [
-      { id: 't1', cat: 'c1', title: '退役業務處理', dateStart: '', dateEnd: '', status: 'doing', note: '', subtasks: [
-        { id: 's1', text: '退役函文給區公所', done: false },
-        { id: 's2', text: '核銷費用', done: false },
-        { id: 's3', text: '林0蕙(600元)未領-改領現金', done: false },
-      ]},
-      { id: 't2', cat: 'c1', title: '輔導教育', dateStart: '', dateEnd: '', status: 'todo', note: '', subtasks: [
-        { id: 's4', text: '等內政部通知', done: false },
-      ]},
-      { id: 't3', cat: 'c1', title: '分發', dateStart: '', dateEnd: '', status: 'todo', note: '南化*1 救護科*1-指定家屬', subtasks: [
-        { id: 's5', text: '歸仁-戴00/南化-蔡00', done: false },
-        { id: 's6', text: '273T撥交-115.05.04(一)', done: false },
-      ]},
-      { id: 't4', cat: 'c2', title: '114年送審', dateStart: '', dateEnd: '2025-09-30', status: 'doing', note: '', subtasks: [
-        { id: 's7', text: '114年-38人', done: false },
-      ]},
-      { id: 't5', cat: 'c2', title: '115年計算分數', dateStart: '2025-10-01', dateEnd: '2026-06-30', status: 'todo', note: '', subtasks: [] },
-      { id: 't6', cat: 'c3', title: '6月性平開會', dateStart: '2025-06-01', dateEnd: '2025-06-30', status: 'todo', note: '委員出席確認', subtasks: [
-        { id: 's8', text: 'mail講師詢問時間', done: false },
-        { id: 's9', text: '問長官時間、借場地', done: false },
-        { id: 's10', text: '發開會通知單', done: false },
-      ]},
-      { id: 't7', cat: 'c4', title: 'EAP成果', dateStart: '', dateEnd: '2025-08-14', status: 'todo', note: '', subtasks: [] },
-      { id: 't8', cat: 'c5', title: '洪員停職動態', dateStart: '', dateEnd: '2025-04-18', status: 'todo', note: '', subtasks: [] },
-      { id: 't9', cat: 'c5', title: '平調人員-動態/送審', dateStart: '', dateEnd: '', status: 'todo', note: '', subtasks: [] },
-      { id: 't10', cat: 'c6', title: '實務訓練', dateStart: '', dateEnd: '2025-07-30', status: 'todo', note: '', subtasks: [] },
-      { id: 't11', cat: 'c6', title: '請證+發派令', dateStart: '', dateEnd: '', status: 'todo', note: '', subtasks: [] },
-      { id: 't12', cat: 'c6', title: '初任送審', dateStart: '', dateEnd: '', status: 'todo', note: '', subtasks: [] },
-      { id: 't13', cat: 'c6', title: '試用期滿', dateStart: '', dateEnd: '', status: 'todo', note: '', subtasks: [
-        { id: 's11', text: '試用期滿考核-人事處權責', done: false },
-      ]},
+      { id: 't1', cat: 'c1', title: '退役業務處理', dateStart: '', dateEnd: '', status: 'doing', note: '', subtasks: [] },
+      { id: 't2', cat: 'c1', title: '輔導教育', dateStart: '', dateEnd: '', status: 'todo', note: '', subtasks: [] },
+      { id: 't3', cat: 'c2', title: '114年送審', dateStart: '', dateEnd: '2025-09-30', status: 'doing', note: '', subtasks: [] },
+      { id: 't4', cat: 'c2', title: '115年計算分數', dateStart: '2025-10-01', dateEnd: '2026-06-30', status: 'todo', note: '', subtasks: [] },
+      { id: 't5', cat: 'c3', title: '6月性平開會', dateStart: '2025-06-01', dateEnd: '2025-06-30', status: 'todo', note: '委員出席確認', subtasks: [] },
+      { id: 't6', cat: 'c4', title: 'EAP成果', dateStart: '', dateEnd: '2025-08-14', status: 'todo', note: '', subtasks: [] },
     ]
   };
 }
@@ -222,7 +258,105 @@ const sCls = s => s==='todo'?'s-todo':s==='doing'?'s-doing':'s-done';
 const sNext = s => s==='todo'?'doing':s==='doing'?'done':'todo';
 const uid6 = () => Math.random().toString(36).slice(2,8);
 
-function render() { renderFilters(); renderSections(); renderModal(); }
+function render() { renderFilters(); renderSections(); renderModal(); renderCalendar(); renderUpcoming(); }
+
+function renderCalendar() {
+  const panel = document.getElementById('calPanel');
+  if (!panel) return;
+  const today = new Date();
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay = new Date(calYear, calMonth + 1, 0);
+  const startDow = firstDay.getDay();
+  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  let days = '';
+  for (let i = 0; i < startDow; i++) {
+    const d = new Date(calYear, calMonth, i - startDow + 1);
+    days += `<div class="cal-day other-month"><div class="cal-day-num">${d.getDate()}</div></div>`;
+  }
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = today.getFullYear()===calYear && today.getMonth()===calMonth && today.getDate()===d;
+    const holiday = HOLIDAYS[dateStr] || '';
+    const dow = new Date(calYear, calMonth, d).getDay();
+    const isRedDay = dow === 0 || dow === 6 || !!holiday;
+    const dayTasks = state.tasks.filter(t => t.dateEnd===dateStr || t.dateStart===dateStr);
+    const dots = dayTasks.map(t => {
+      const cat = state.categories.find(c => c.id===t.cat);
+      const color = cat ? cat.color : '#888';
+      return `<div class="cal-dot${t.status==='done'?' done':''}" style="background:${color}" data-tog="${t.id}" title="${t.title}（${t.status==='done'?'完成':t.status==='doing'?'進行中':'未開始'}）"></div>`;
+    }).join('');
+    days += `<div class="cal-day${isToday?' today':''}${isRedDay?' red-day':''}" data-date="${dateStr}">
+      <div class="cal-day-num">${d}</div>
+      ${holiday ? `<div class="cal-holiday">${holiday}</div>` : ''}
+      ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
+    </div>`;
+  }
+  const totalCells = Math.ceil((startDow + lastDay.getDate()) / 7) * 7;
+  for (let i = 1; i <= totalCells - startDow - lastDay.getDate(); i++) {
+    days += `<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
+  }
+  panel.innerHTML = `<div class="cal-box">
+    <div class="cal-hd">
+      <button class="cal-nav" id="calPrev">‹</button>
+      <span class="cal-hd-title">${calYear} 年 ${monthNames[calMonth]}</span>
+      <button class="cal-nav" id="calNext">›</button>
+    </div>
+    <div class="cal-grid">
+      <div class="cal-dow"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+      <div class="cal-days">${days}</div>
+    </div>
+    <div style="padding:6px 10px 10px;font-size:11px;color:var(--text3);text-align:center;">點日期可新增事項 · 點色點可切換進度</div>
+  </div>`;
+  document.getElementById('calPrev').addEventListener('click', () => {
+    calMonth--; if (calMonth < 0) { calMonth=11; calYear--; } renderCalendar();
+  });
+  document.getElementById('calNext').addEventListener('click', () => {
+    calMonth++; if (calMonth > 11) { calMonth=0; calYear++; } renderCalendar();
+  });
+  panel.querySelectorAll('.cal-day:not(.other-month)').forEach(el => {
+    el.addEventListener('click', () => {
+      presetDate = el.dataset.date; showModal = 'task'; render();
+    });
+  });
+  panel.querySelectorAll('[data-tog]').forEach(b => b.addEventListener('click', async e => {
+    e.stopPropagation();
+    const t = state.tasks.find(x => x.id===b.dataset.tog);
+    if (t) { t.status = sNext(t.status); await save(); render(); toast('進度已更新'); }
+  }));
+}
+
+function renderUpcoming() {
+  const panel = document.getElementById('upcomingPanel');
+  if (!panel) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const in30 = new Date(today); in30.setDate(today.getDate()+30);
+  const fmt2 = d => { if(!d) return ''; const p=d.split('-'); return `${parseInt(p[1])}/${parseInt(p[2])}`; };
+  const upcoming = state.tasks
+    .filter(t => t.dateEnd && t.status !== 'done')
+    .map(t => ({ ...t, _end: new Date(t.dateEnd) }))
+    .filter(t => t._end >= today && t._end <= in30)
+    .sort((a,b) => a._end - b._end);
+  if (!upcoming.length) { panel.innerHTML = ''; return; }
+  const items = upcoming.map(t => {
+    const cat = state.categories.find(c => c.id===t.cat);
+    const color = cat ? cat.color : '#888';
+    const diff = Math.ceil((t._end - today) / 86400000);
+    const diffStr = diff===0?'今天':diff===1?'明天':`${diff} 天後`;
+    return `<div class="upcoming-item">
+      <div class="upcoming-dot" style="background:${color}"></div>
+      <div class="upcoming-info">
+        <div class="upcoming-name${t.status==='done'?' done':''}">${t.title}</div>
+        <div class="upcoming-date">${fmt2(t.dateEnd)} · ${diffStr}</div>
+      </div>
+      <button class="upcoming-tog ${sCls(t.status)}" data-utog="${t.id}">${sLabel(t.status)}</button>
+    </div>`;
+  }).join('');
+  panel.innerHTML = `<div class="upcoming-box"><div class="upcoming-hd">近 30 天到期事項</div>${items}</div>`;
+  panel.querySelectorAll('[data-utog]').forEach(b => b.addEventListener('click', async () => {
+    const t = state.tasks.find(x => x.id===b.dataset.utog);
+    if (t) { t.status = sNext(t.status); await save(); render(); toast('進度已更新'); }
+  }));
+}
 
 function renderFilters() {
   const row = document.getElementById('filterRow');
@@ -259,10 +393,10 @@ function renderSections() {
         h += `<div class="task-card">
           <div class="task-top">
             <div class="task-body">
-              <div class="task-title${t.status==='done'?' done':''}" data-etitle="${t.id}">${t.title}</div>
+              <div class="task-title${t.status==='done'?' done':''}">${t.title}</div>
               <div class="task-meta">
-                <span class="meta-date" data-edate="${t.id}" title="點兩下編輯日期" style="cursor:text;min-width:30px">${dates||'點兩下設定日期'}</span>
-                ${t.note?`<span class="meta-note" data-enote="${t.id}" title="點兩下編輯備註" style="cursor:text">${t.note}</span>`:`<span class="meta-note" data-enote="${t.id}" title="點兩下新增備註" style="cursor:text;opacity:0.4">備註</span>`}
+                ${dates?`<span class="meta-date">${dates}</span>`:''}
+                ${t.note?`<span class="meta-note">${t.note}</span>`:''}
                 ${subs.length?`<span class="meta-sub">${doneCnt}/${subs.length} 完成</span>`:''}
               </div>
             </div>
@@ -278,7 +412,7 @@ function renderSections() {
           subs.forEach(s => {
             h += `<div class="sub-item">
               <div class="sub-check${s.done?' done':''}" data-stog="${t.id}" data-sid="${s.id}">${s.done?'✓':''}</div>
-              <span class="sub-text${s.done?' done':''}" data-esub="${t.id}" data-sid="${s.id}" style="cursor:text">${s.text}</span>
+              <span class="sub-text${s.done?' done':''}">${s.text}</span>
               <button class="sub-del" data-sdel="${t.id}" data-sid="${s.id}">✕</button>
             </div>`;
           });
@@ -293,99 +427,6 @@ function renderSections() {
     h += `</div>`;
   });
   el.innerHTML = h;
-
-  el.querySelectorAll('.task-title[data-etitle]').forEach(div => {
-    div.addEventListener('dblclick', () => {
-      const tid = div.dataset.etitle;
-      const t = state.tasks.find(x=>x.id===tid);
-      if (!t) return;
-      const inp = document.createElement('input');
-      inp.value = t.title;
-      inp.style.cssText = 'width:100%;border:1px solid var(--blue);border-radius:4px;padding:2px 6px;font-size:14px;font-weight:500;font-family:inherit;background:var(--surface);color:var(--text);outline:none;';
-      div.replaceWith(inp);
-      inp.focus(); inp.select();
-      const done = async () => {
-        const val = inp.value.trim();
-        if (val && val !== t.title) { t.title = val; await save(); toast('標題已更新'); }
-        render();
-      };
-      inp.addEventListener('blur', done);
-      inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape') { render(); } });
-    });
-    div.title = '點兩下可編輯標題';
-    div.style.cursor = 'text';
-  });
-
-  el.querySelectorAll('[data-enote]').forEach(span => {
-    span.addEventListener('dblclick', () => {
-      const tid = span.dataset.enote;
-      const t = state.tasks.find(x=>x.id===tid);
-      if (!t) return;
-      const inp = document.createElement('input');
-      inp.value = t.note || '';
-      inp.placeholder = '輸入備註...';
-      inp.style.cssText = 'border:1px solid var(--blue);border-radius:4px;padding:1px 6px;font-size:11px;font-style:italic;font-family:inherit;background:var(--surface);color:var(--text);outline:none;min-width:120px;';
-      span.replaceWith(inp);
-      inp.focus(); inp.select();
-      const done = async () => {
-        const val = inp.value.trim();
-        if (val !== t.note) { t.note = val; await save(); toast('備註已更新'); }
-        render();
-      };
-      inp.addEventListener('blur', done);
-      inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape') { render(); } });
-    });
-  });
-
-  el.querySelectorAll('[data-edate]').forEach(span => {
-    span.addEventListener('dblclick', () => {
-      const tid = span.dataset.edate;
-      const t = state.tasks.find(x=>x.id===tid);
-      if (!t) return;
-      const wrap = document.createElement('span');
-      wrap.style.cssText = 'display:inline-flex;gap:4px;align-items:center;font-size:11px;';
-      const iS = document.createElement('input');
-      iS.type='date'; iS.value=t.dateStart||'';
-      iS.style.cssText='border:1px solid var(--blue);border-radius:4px;padding:1px 4px;font-size:11px;font-family:inherit;background:var(--surface);color:var(--text);outline:none;';
-      const sep = document.createElement('span'); sep.textContent='－'; sep.style.color='var(--text3)';
-      const iE = document.createElement('input');
-      iE.type='date'; iE.value=t.dateEnd||'';
-      iE.style.cssText=iS.style.cssText;
-      wrap.appendChild(iS); wrap.appendChild(sep); wrap.appendChild(iE);
-      span.replaceWith(wrap);
-      iS.focus();
-      const done = async () => {
-        t.dateStart = iS.value; t.dateEnd = iE.value;
-        await save(); toast('日期已更新'); render();
-      };
-      iE.addEventListener('blur', () => setTimeout(done, 150));
-      iS.addEventListener('keydown', e => { if(e.key==='Enter') iE.focus(); if(e.key==='Escape') render(); });
-      iE.addEventListener('keydown', e => { if(e.key==='Enter') iE.blur(); if(e.key==='Escape') render(); });
-    });
-  });
-
-  el.querySelectorAll('[data-esub]').forEach(span => {
-    span.addEventListener('dblclick', () => {
-      const tid = span.dataset.esub;
-      const sid = span.dataset.sid;
-      const t = state.tasks.find(x=>x.id===tid);
-      if (!t) return;
-      const s = t.subtasks.find(x=>x.id===sid);
-      if (!s) return;
-      const inp = document.createElement('input');
-      inp.value = s.text;
-      inp.style.cssText = 'flex:1;border:1px solid var(--blue);border-radius:4px;padding:1px 6px;font-size:12px;font-family:inherit;background:var(--surface);color:var(--text);outline:none;width:100%;';
-      span.replaceWith(inp);
-      inp.focus(); inp.select();
-      const done = async () => {
-        const val = inp.value.trim();
-        if (val && val !== s.text) { s.text = val; await save(); toast('細項已更新'); }
-        render();
-      };
-      inp.addEventListener('blur', done);
-      inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape') render(); });
-    });
-  });
 
   el.querySelectorAll('[data-tog]').forEach(b => b.addEventListener('click', async () => {
     const t = state.tasks.find(x=>x.id===b.dataset.tog);
@@ -451,6 +492,7 @@ function renderModal() {
     </div></div>`;
     document.getElementById('ov').addEventListener('click', e => { if(e.target.id==='ov') closeModal(); });
     document.getElementById('mX').addEventListener('click', closeModal);
+    if (presetDate) document.getElementById('mE').value = presetDate;
     document.getElementById('mT').focus();
     document.getElementById('mOk').addEventListener('click', async () => {
       const title = document.getElementById('mT').value.trim();
@@ -509,15 +551,10 @@ function renderModal() {
   }
 }
 
-function closeModal() { showModal=null; presetCat=null; render(); }
+function closeModal() { showModal=null; presetCat=null; presetDate=null; render(); }
 
 document.getElementById('addBtn').addEventListener('click', () => { showModal='task'; presetCat=null; render(); });
 document.getElementById('manageBtn').addEventListener('click', () => { showModal='manage'; render(); });
-document.getElementById('resetBtn').addEventListener('click', async () => {
-  if (!confirm('確定要重置所有資料？\n現有的類別和事項會全部清除，回復為預設內容。')) return;
-  state = defaultState();
-  await save(); expanded.clear(); filterCat='all'; render(); toast('已重置為預設資料');
-});
 
 onAuthStateChanged(auth, async user => {
   if (user) {
