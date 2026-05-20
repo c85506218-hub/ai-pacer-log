@@ -144,6 +144,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div class="header-top">
       <div class="header-title">工作事項追蹤</div>
       <div class="header-actions">
+        <button class="btn" id="syncBtn">☁ 跨裝置同步</button>
         <button class="btn" id="manageBtn">管理類別</button>
         <button class="btn btn-primary" id="addBtn">＋ 新增</button>
       </div>
@@ -165,7 +166,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, linkWithPopup, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const FB_CONFIG = {
   apiKey: "AIzaSyBEAddCvJVt1Z606uDlURg3AsZ2ns3Jxfw",
@@ -180,6 +181,7 @@ const FB_CONFIG = {
 const fbApp = initializeApp(FB_CONFIG);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
+const provider = new GoogleAuthProvider();
 const DOC_ID = 'work_tracker_main';
 const COLORS = ['#185FA5','#0F6E56','#D85A30','#534AB7','#993556','#854F0B','#A32D2D','#888780'];
 
@@ -556,9 +558,38 @@ function closeModal() { showModal=null; presetCat=null; presetDate=null; render(
 document.getElementById('addBtn').addEventListener('click', () => { showModal='task'; presetCat=null; render(); });
 document.getElementById('manageBtn').addEventListener('click', () => { showModal='manage'; render(); });
 
+async function syncWithGoogle() {
+  const currentUser = auth.currentUser;
+  try {
+    if (currentUser && currentUser.isAnonymous) {
+      await linkWithPopup(currentUser, provider);
+      const btn = document.getElementById('syncBtn');
+      btn.textContent = '✅ 已同步';
+      btn.style.color = 'var(--green)';
+      toast('✅ 已綁定 Google 帳號，所有裝置都能同步了');
+    } else {
+      await signInWithPopup(auth, provider);
+    }
+  } catch(e) {
+    if (e.code === 'auth/credential-already-in-use') {
+      await signInWithPopup(auth, provider);
+      await load(); render();
+      toast('✅ 已同步至 Google 帳號資料');
+    } else {
+      toast('登入失敗：' + (e.message || e.code));
+    }
+  }
+}
+
+document.getElementById('syncBtn').addEventListener('click', syncWithGoogle);
+
 onAuthStateChanged(auth, async user => {
   if (user) {
     uid = user.uid;
+    if (!user.isAnonymous) {
+      const btn = document.getElementById('syncBtn');
+      if (btn) { btn.textContent = '✅ 已同步'; btn.style.color = 'var(--green)'; }
+    }
     await load();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display = 'block';
