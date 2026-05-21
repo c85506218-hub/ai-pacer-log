@@ -1,4 +1,3 @@
-Work tracker · HTML
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -161,12 +160,12 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
   </div>
 </div>
 <div id="modalArea"></div>
- 
+
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
- 
+
 const FB_CONFIG = {
   apiKey: "AIzaSyBEAddCvJVt1Z606uDlURg3AsZ2ns3Jxfw",
   authDomain: "ai-pacer-log.firebaseapp.com",
@@ -175,16 +174,13 @@ const FB_CONFIG = {
   messagingSenderId: "629975239314",
   appId: "1:629975239314:web:e70693fccdf5a786e9744b"
 };
- 
+
 const fbApp = initializeApp(FB_CONFIG);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
- 
-// ✅ 固定路徑，不分使用者，所有裝置共用同一份資料
 const DATA_REF = doc(db, 'shared', 'work_tracker_main');
- 
 const COLORS = ['#185FA5','#0F6E56','#D85A30','#534AB7','#993556','#854F0B','#A32D2D','#888780'];
- 
+
 let state = { categories: [], tasks: [] };
 let filterCat = 'all';
 let showModal = null;
@@ -193,7 +189,7 @@ let expanded = new Set();
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 let presetDate = null;
- 
+
 const HOLIDAYS = {
   '2025-01-01':'元旦','2025-01-27':'除夕','2025-01-28':'春節','2025-01-29':'春節','2025-01-30':'春節',
   '2025-02-28':'和平紀念日','2025-04-03':'兒童節補假','2025-04-04':'兒童節','2025-05-01':'勞動節',
@@ -205,7 +201,7 @@ const HOLIDAYS = {
   '2027-02-28':'和平紀念日','2027-04-04':'兒童節','2027-04-05':'清明節','2027-05-01':'勞動節',
   '2027-06-09':'端午節','2027-09-22':'中秋節','2027-10-10':'國慶日',
 };
- 
+
 function defaultState() {
   return {
     categories: [
@@ -224,20 +220,17 @@ function defaultState() {
     ]
   };
 }
- 
+
 async function load() {
   try {
     const snap = await getDoc(DATA_REF);
     if (snap.exists()) {
       state = snap.data();
       state.tasks.forEach(t => { if (!t.subtasks) t.subtasks = []; });
-    } else {
-      state = defaultState();
-      await save();
-    }
+    } else { state = defaultState(); await save(); }
   } catch(e) { state = defaultState(); }
 }
- 
+
 async function save() {
   try {
     await setDoc(DATA_REF, state);
@@ -245,26 +238,26 @@ async function save() {
     if (badge) { badge.style.display = 'inline-flex'; setTimeout(() => { badge.style.display = 'none'; }, 2000); }
   } catch(e) { toast('儲存失敗，請檢查網路'); }
 }
- 
+
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 2200);
 }
- 
+
 function fmt(d) {
   if (!d) return '';
   const p = d.split('-');
   return p.length === 3 ? `${parseInt(p[1])}/${parseInt(p[2])}` : '';
 }
- 
+
 const sLabel = s => s==='todo'?'未開始':s==='doing'?'進行中':'完成';
 const sCls   = s => s==='todo'?'s-todo':s==='doing'?'s-doing':'s-done';
 const sNext  = s => s==='todo'?'doing':s==='doing'?'done':'todo';
 const uid6   = () => Math.random().toString(36).slice(2,8);
- 
+
 function render() { renderFilters(); renderSections(); renderModal(); renderCalendar(); renderUpcoming(); }
- 
+
 function renderCalendar() {
   const panel = document.getElementById('calPanel');
   if (!panel) return;
@@ -327,23 +320,23 @@ function renderCalendar() {
     if (t) { t.status=sNext(t.status); await save(); render(); toast('進度已更新'); }
   }));
 }
- 
+
 function renderUpcoming() {
   const panel = document.getElementById('upcomingPanel');
   if (!panel) return;
-  const today = new Date(); today.setHours(0,0,0,0);
-  const in30  = new Date(today); in30.setDate(today.getDate()+30);
-  const fmt2  = d => { if(!d) return ''; const p=d.split('-'); return `${parseInt(p[1])}/${parseInt(p[2])}`; };
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const in30Date = new Date(now); in30Date.setDate(now.getDate()+30);
+  const in30Str = `${in30Date.getFullYear()}-${String(in30Date.getMonth()+1).padStart(2,'0')}-${String(in30Date.getDate()).padStart(2,'0')}`;
+  const fmt2 = d => { if(!d) return ''; const p=d.split('-'); return `${parseInt(p[1])}/${parseInt(p[2])}`; };
   const upcoming = state.tasks
-    .filter(t => t.dateEnd && t.status!=='done')
-    .map(t => ({...t, _end: new Date(t.dateEnd)}))
-    .filter(t => t._end>=today && t._end<=in30)
-    .sort((a,b)=>a._end-b._end);
+    .filter(t => t.dateEnd && t.status!=='done' && t.dateEnd >= todayStr && t.dateEnd <= in30Str)
+    .sort((a,b)=>a.dateEnd.localeCompare(b.dateEnd));
   if (!upcoming.length) { panel.innerHTML=''; return; }
   const items = upcoming.map(t => {
     const cat = state.categories.find(c=>c.id===t.cat);
     const color = cat?cat.color:'#888';
-    const diff = Math.ceil((t._end-today)/86400000);
+    const diff = t.dateEnd===todayStr ? 0 : Math.round((new Date(t.dateEnd.replace(/-/g,'/'))-new Date(todayStr.replace(/-/g,'/')))/ 86400000);
     const diffStr = diff===0?'今天':diff===1?'明天':`${diff} 天後`;
     return `<div class="upcoming-item">
       <div class="upcoming-dot" style="background:${color}"></div>
@@ -360,7 +353,7 @@ function renderUpcoming() {
     if (t) { t.status=sNext(t.status); await save(); render(); toast('進度已更新'); }
   }));
 }
- 
+
 function renderFilters() {
   const row = document.getElementById('filterRow');
   let h = `<button class="pill${filterCat==='all'?' active':''}" data-f="all">全部</button>`;
@@ -370,7 +363,7 @@ function renderFilters() {
   row.innerHTML = h;
   row.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { filterCat=b.dataset.f; render(); }));
 }
- 
+
 function renderSections() {
   const el = document.getElementById('sections');
   const cats = filterCat==='all' ? state.categories : state.categories.filter(c=>c.id===filterCat);
@@ -468,7 +461,7 @@ function renderSections() {
     if (inp) inp.addEventListener('keydown',e=>{if(e.key==='Enter')doAdd();});
   });
 }
- 
+
 function renderModal() {
   const area=document.getElementById('modalArea');
   if (!showModal){area.innerHTML='';return;}
@@ -554,13 +547,12 @@ function renderModal() {
     });
   }
 }
- 
+
 function closeModal(){showModal=null;presetCat=null;presetDate=null;render();}
- 
+
 document.getElementById('addBtn').addEventListener('click',()=>{showModal='task';presetCat=null;render();});
 document.getElementById('manageBtn').addEventListener('click',()=>{showModal='manage';render();});
- 
-// 匿名登入只是為了讓 Firebase 允許讀寫，資料存在固定路徑
+
 onAuthStateChanged(auth, async user => {
   if (user) {
     await load();
@@ -575,4 +567,3 @@ signInAnonymously(auth).catch(() => {
 </script>
 </body>
 </html>
- 
