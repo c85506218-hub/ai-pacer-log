@@ -58,7 +58,6 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .upcoming-date { font-size: 11px; color: var(--text3); margin-top: 1px; }
 .upcoming-tog { background: none; border: 1px solid var(--border); cursor: pointer; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-family: inherit; white-space: nowrap; color: var(--text2); }
 .upcoming-tog:hover { background: var(--surface2); }
-.upcoming-empty { font-size: 12px; color: var(--text3); text-align: center; padding: 8px 0; }
 @media (max-width: 960px) { .main-layout { flex-direction: column; } .cal-panel { width: 100%; position: static; } }
 .header { position: sticky; top: 0; z-index: 50; background: var(--bg); padding: 16px 0 12px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
 .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -68,6 +67,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .btn:hover { background: var(--surface2); }
 .btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
 .btn-primary:hover { background: var(--blue-text); }
+.sync-badge { font-size: 11px; color: var(--green); background: var(--green-bg); border: 1px solid #b2ddd1; border-radius: 20px; padding: 3px 10px; display: none; }
 .filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .pill { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: var(--surface); cursor: pointer; color: var(--text2); transition: all 0.1s; }
 .pill.active { border-color: var(--text); background: var(--text); color: #fff; }
@@ -131,7 +131,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .cat-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .cat-row:last-child { border-bottom: none; }
 .cat-row input { flex: 1; border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 5px 9px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); }
-.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 9px 18px; border-radius: 20px; font-size: 13px; font-weight: 500; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 9px 18px; border-radius: 20px; font-size: 13px; font-weight: 500; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; }
 .toast.show { opacity: 1; }
 .loading { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--text2); z-index: 300; }
 </style>
@@ -144,7 +144,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div class="header-top">
       <div class="header-title">工作事項追蹤</div>
       <div class="header-actions">
-        <button class="btn" id="syncBtn">☁ 跨裝置同步</button>
+        <span class="sync-badge" id="syncBadge">✅ 已同步</span>
         <button class="btn" id="manageBtn">管理類別</button>
         <button class="btn btn-primary" id="addBtn">＋ 新增</button>
       </div>
@@ -152,9 +152,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div class="filter-row" id="filterRow"></div>
   </div>
   <div class="main-layout">
-    <div class="tasks-col">
-      <div id="sections"></div>
-    </div>
+    <div class="tasks-col"><div id="sections"></div></div>
     <div class="cal-panel">
       <div id="calPanel"></div>
       <div id="upcomingPanel"></div>
@@ -162,39 +160,39 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
   </div>
 </div>
 <div id="modalArea"></div>
-
+ 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, linkWithPopup, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+ 
 const FB_CONFIG = {
   apiKey: "AIzaSyBEAddCvJVt1Z606uDlURg3AsZ2ns3Jxfw",
   authDomain: "ai-pacer-log.firebaseapp.com",
   projectId: "ai-pacer-log",
   storageBucket: "ai-pacer-log.firebasestorage.app",
   messagingSenderId: "629975239314",
-  appId: "1:629975239314:web:e70693fccdf5a786e9744b",
-  measurementId: "G-ELWEBPL7HR"
+  appId: "1:629975239314:web:e70693fccdf5a786e9744b"
 };
-
+ 
 const fbApp = initializeApp(FB_CONFIG);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
-const provider = new GoogleAuthProvider();
-const DOC_ID = 'work_tracker_main';
+ 
+// ✅ 固定路徑，不分使用者，所有裝置共用同一份資料
+const DATA_REF = doc(db, 'shared', 'work_tracker_main');
+ 
 const COLORS = ['#185FA5','#0F6E56','#D85A30','#534AB7','#993556','#854F0B','#A32D2D','#888780'];
-
+ 
 let state = { categories: [], tasks: [] };
 let filterCat = 'all';
 let showModal = null;
 let presetCat = null;
 let expanded = new Set();
-let uid = null;
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 let presetDate = null;
-
+ 
 const HOLIDAYS = {
   '2025-01-01':'元旦','2025-01-27':'除夕','2025-01-28':'春節','2025-01-29':'春節','2025-01-30':'春節',
   '2025-02-28':'和平紀念日','2025-04-03':'兒童節補假','2025-04-04':'兒童節','2025-05-01':'勞動節',
@@ -206,7 +204,7 @@ const HOLIDAYS = {
   '2027-02-28':'和平紀念日','2027-04-04':'兒童節','2027-04-05':'清明節','2027-05-01':'勞動節',
   '2027-06-09':'端午節','2027-09-22':'中秋節','2027-10-10':'國慶日',
 };
-
+ 
 function defaultState() {
   return {
     categories: [
@@ -225,49 +223,53 @@ function defaultState() {
     ]
   };
 }
-
-function getRef() { return doc(db, 'users', uid, 'data', DOC_ID); }
-
+ 
 async function load() {
   try {
-    const snap = await getDoc(getRef());
+    const snap = await getDoc(DATA_REF);
     if (snap.exists()) {
       state = snap.data();
       state.tasks.forEach(t => { if (!t.subtasks) t.subtasks = []; });
-    } else { state = defaultState(); await save(); }
+    } else {
+      state = defaultState();
+      await save();
+    }
   } catch(e) { state = defaultState(); }
 }
-
+ 
 async function save() {
-  try { await setDoc(getRef(), state); }
-  catch(e) { toast('儲存失敗，請檢查網路'); }
+  try {
+    await setDoc(DATA_REF, state);
+    const badge = document.getElementById('syncBadge');
+    if (badge) { badge.style.display = 'inline-flex'; setTimeout(() => { badge.style.display = 'none'; }, 2000); }
+  } catch(e) { toast('儲存失敗，請檢查網路'); }
 }
-
+ 
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 2200);
 }
-
+ 
 function fmt(d) {
   if (!d) return '';
   const p = d.split('-');
   return p.length === 3 ? `${parseInt(p[1])}/${parseInt(p[2])}` : '';
 }
-
+ 
 const sLabel = s => s==='todo'?'未開始':s==='doing'?'進行中':'完成';
-const sCls = s => s==='todo'?'s-todo':s==='doing'?'s-doing':'s-done';
-const sNext = s => s==='todo'?'doing':s==='doing'?'done':'todo';
-const uid6 = () => Math.random().toString(36).slice(2,8);
-
+const sCls   = s => s==='todo'?'s-todo':s==='doing'?'s-doing':'s-done';
+const sNext  = s => s==='todo'?'doing':s==='doing'?'done':'todo';
+const uid6   = () => Math.random().toString(36).slice(2,8);
+ 
 function render() { renderFilters(); renderSections(); renderModal(); renderCalendar(); renderUpcoming(); }
-
+ 
 function renderCalendar() {
   const panel = document.getElementById('calPanel');
   if (!panel) return;
   const today = new Date();
   const firstDay = new Date(calYear, calMonth, 1);
-  const lastDay = new Date(calYear, calMonth + 1, 0);
+  const lastDay  = new Date(calYear, calMonth + 1, 0);
   const startDow = firstDay.getDay();
   const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   let days = '';
@@ -280,17 +282,17 @@ function renderCalendar() {
     const isToday = today.getFullYear()===calYear && today.getMonth()===calMonth && today.getDate()===d;
     const holiday = HOLIDAYS[dateStr] || '';
     const dow = new Date(calYear, calMonth, d).getDay();
-    const isRedDay = dow === 0 || dow === 6 || !!holiday;
+    const isRedDay = dow===0 || dow===6 || !!holiday;
     const dayTasks = state.tasks.filter(t => t.dateEnd===dateStr || t.dateStart===dateStr);
     const dots = dayTasks.map(t => {
       const cat = state.categories.find(c => c.id===t.cat);
       const color = cat ? cat.color : '#888';
-      return `<div class="cal-dot${t.status==='done'?' done':''}" style="background:${color}" data-tog="${t.id}" title="${t.title}（${t.status==='done'?'完成':t.status==='doing'?'進行中':'未開始'}）"></div>`;
+      return `<div class="cal-dot${t.status==='done'?' done':''}" style="background:${color}" data-tog="${t.id}" title="${t.title}"></div>`;
     }).join('');
     days += `<div class="cal-day${isToday?' today':''}${isRedDay?' red-day':''}" data-date="${dateStr}">
       <div class="cal-day-num">${d}</div>
-      ${holiday ? `<div class="cal-holiday">${holiday}</div>` : ''}
-      ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
+      ${holiday?`<div class="cal-holiday">${holiday}</div>`:''}
+      ${dots?`<div class="cal-dots">${dots}</div>`:''}
     </div>`;
   }
   const totalCells = Math.ceil((startDow + lastDay.getDate()) / 7) * 7;
@@ -310,39 +312,37 @@ function renderCalendar() {
     <div style="padding:6px 10px 10px;font-size:11px;color:var(--text3);text-align:center;">點日期可新增事項 · 點色點可切換進度</div>
   </div>`;
   document.getElementById('calPrev').addEventListener('click', () => {
-    calMonth--; if (calMonth < 0) { calMonth=11; calYear--; } renderCalendar();
+    calMonth--; if (calMonth<0){calMonth=11;calYear--;} renderCalendar();
   });
   document.getElementById('calNext').addEventListener('click', () => {
-    calMonth++; if (calMonth > 11) { calMonth=0; calYear++; } renderCalendar();
+    calMonth++; if (calMonth>11){calMonth=0;calYear++;} renderCalendar();
   });
   panel.querySelectorAll('.cal-day:not(.other-month)').forEach(el => {
-    el.addEventListener('click', () => {
-      presetDate = el.dataset.date; showModal = 'task'; render();
-    });
+    el.addEventListener('click', () => { presetDate=el.dataset.date; showModal='task'; render(); });
   });
   panel.querySelectorAll('[data-tog]').forEach(b => b.addEventListener('click', async e => {
     e.stopPropagation();
-    const t = state.tasks.find(x => x.id===b.dataset.tog);
-    if (t) { t.status = sNext(t.status); await save(); render(); toast('進度已更新'); }
+    const t = state.tasks.find(x=>x.id===b.dataset.tog);
+    if (t) { t.status=sNext(t.status); await save(); render(); toast('進度已更新'); }
   }));
 }
-
+ 
 function renderUpcoming() {
   const panel = document.getElementById('upcomingPanel');
   if (!panel) return;
   const today = new Date(); today.setHours(0,0,0,0);
-  const in30 = new Date(today); in30.setDate(today.getDate()+30);
-  const fmt2 = d => { if(!d) return ''; const p=d.split('-'); return `${parseInt(p[1])}/${parseInt(p[2])}`; };
+  const in30  = new Date(today); in30.setDate(today.getDate()+30);
+  const fmt2  = d => { if(!d) return ''; const p=d.split('-'); return `${parseInt(p[1])}/${parseInt(p[2])}`; };
   const upcoming = state.tasks
-    .filter(t => t.dateEnd && t.status !== 'done')
-    .map(t => ({ ...t, _end: new Date(t.dateEnd) }))
-    .filter(t => t._end >= today && t._end <= in30)
-    .sort((a,b) => a._end - b._end);
-  if (!upcoming.length) { panel.innerHTML = ''; return; }
+    .filter(t => t.dateEnd && t.status!=='done')
+    .map(t => ({...t, _end: new Date(t.dateEnd)}))
+    .filter(t => t._end>=today && t._end<=in30)
+    .sort((a,b)=>a._end-b._end);
+  if (!upcoming.length) { panel.innerHTML=''; return; }
   const items = upcoming.map(t => {
-    const cat = state.categories.find(c => c.id===t.cat);
-    const color = cat ? cat.color : '#888';
-    const diff = Math.ceil((t._end - today) / 86400000);
+    const cat = state.categories.find(c=>c.id===t.cat);
+    const color = cat?cat.color:'#888';
+    const diff = Math.ceil((t._end-today)/86400000);
     const diffStr = diff===0?'今天':diff===1?'明天':`${diff} 天後`;
     return `<div class="upcoming-item">
       <div class="upcoming-dot" style="background:${color}"></div>
@@ -355,11 +355,11 @@ function renderUpcoming() {
   }).join('');
   panel.innerHTML = `<div class="upcoming-box"><div class="upcoming-hd">近 30 天到期事項</div>${items}</div>`;
   panel.querySelectorAll('[data-utog]').forEach(b => b.addEventListener('click', async () => {
-    const t = state.tasks.find(x => x.id===b.dataset.utog);
-    if (t) { t.status = sNext(t.status); await save(); render(); toast('進度已更新'); }
+    const t = state.tasks.find(x=>x.id===b.dataset.utog);
+    if (t) { t.status=sNext(t.status); await save(); render(); toast('進度已更新'); }
   }));
 }
-
+ 
 function renderFilters() {
   const row = document.getElementById('filterRow');
   let h = `<button class="pill${filterCat==='all'?' active':''}" data-f="all">全部</button>`;
@@ -367,16 +367,16 @@ function renderFilters() {
     h += `<button class="pill${filterCat===c.id?' active':''}" data-f="${c.id}" style="${filterCat===c.id?`background:${c.color};border-color:${c.color};color:#fff`:`border-left:3px solid ${c.color}`}">${c.name}</button>`;
   });
   row.innerHTML = h;
-  row.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { filterCat = b.dataset.f; render(); }));
+  row.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { filterCat=b.dataset.f; render(); }));
 }
-
+ 
 function renderSections() {
   const el = document.getElementById('sections');
   const cats = filterCat==='all' ? state.categories : state.categories.filter(c=>c.id===filterCat);
   if (!cats.length) { el.innerHTML='<div class="empty">沒有業務類別</div>'; return; }
   let h = '';
   cats.forEach(cat => {
-    const tasks = state.tasks.filter(t => t.cat===cat.id);
+    const tasks = state.tasks.filter(t=>t.cat===cat.id);
     h += `<div class="section">
       <div class="section-hd">
         <div class="section-dot" style="background:${cat.color}"></div>
@@ -388,10 +388,10 @@ function renderSections() {
       h += `<div class="empty">尚無事項，點「＋ 新增」加入</div>`;
     } else {
       tasks.forEach(t => {
-        const subs = t.subtasks || [];
+        const subs = t.subtasks||[];
         const doneCnt = subs.filter(s=>s.done).length;
         const isExp = expanded.has(t.id);
-        const dates = [fmt(t.dateStart), fmt(t.dateEnd)].filter(Boolean).join(' － ');
+        const dates = [fmt(t.dateStart),fmt(t.dateEnd)].filter(Boolean).join(' － ');
         h += `<div class="task-card">
           <div class="task-top">
             <div class="task-body">
@@ -410,7 +410,7 @@ function renderSections() {
           </div>`;
         if (isExp) {
           h += `<div class="subtasks">`;
-          if (subs.length === 0) h += `<div style="font-size:12px;color:var(--text3);padding:4px 0 8px">尚無細項，在下方輸入新增</div>`;
+          if (!subs.length) h += `<div style="font-size:12px;color:var(--text3);padding:4px 0 8px">尚無細項，在下方輸入新增</div>`;
           subs.forEach(s => {
             h += `<div class="sub-item">
               <div class="sub-check${s.done?' done':''}" data-stog="${t.id}" data-sid="${s.id}">${s.done?'✓':''}</div>
@@ -429,53 +429,51 @@ function renderSections() {
     h += `</div>`;
   });
   el.innerHTML = h;
-
   el.querySelectorAll('[data-tog]').forEach(b => b.addEventListener('click', async () => {
     const t = state.tasks.find(x=>x.id===b.dataset.tog);
-    if (t) { t.status = sNext(t.status); await save(); render(); toast('進度已更新'); }
+    if (t) { t.status=sNext(t.status); await save(); render(); toast('進度已更新'); }
   }));
   el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
     if (!confirm('確定刪除這項事項（含所有細項）？')) return;
-    state.tasks = state.tasks.filter(x=>x.id!==b.dataset.del);
+    state.tasks=state.tasks.filter(x=>x.id!==b.dataset.del);
     expanded.delete(b.dataset.del);
     await save(); render(); toast('已刪除');
   }));
   el.querySelectorAll('[data-exp]').forEach(b => b.addEventListener('click', () => {
-    const id = b.dataset.exp;
-    expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+    const id=b.dataset.exp;
+    expanded.has(id)?expanded.delete(id):expanded.add(id);
     render();
   }));
   el.querySelectorAll('[data-addcat]').forEach(b => b.addEventListener('click', () => {
-    presetCat = b.dataset.addcat; showModal = 'task'; render();
+    presetCat=b.dataset.addcat; showModal='task'; render();
   }));
   el.querySelectorAll('[data-stog]').forEach(b => b.addEventListener('click', async () => {
-    const t = state.tasks.find(x=>x.id===b.dataset.stog);
-    if (t) { const s = t.subtasks.find(x=>x.id===b.dataset.sid); if (s) { s.done=!s.done; await save(); render(); } }
+    const t=state.tasks.find(x=>x.id===b.dataset.stog);
+    if (t) { const s=t.subtasks.find(x=>x.id===b.dataset.sid); if(s){s.done=!s.done; await save(); render();} }
   }));
   el.querySelectorAll('[data-sdel]').forEach(b => b.addEventListener('click', async () => {
-    const t = state.tasks.find(x=>x.id===b.dataset.sdel);
-    if (t) { t.subtasks = t.subtasks.filter(x=>x.id!==b.dataset.sid); await save(); render(); toast('細項已刪除'); }
+    const t=state.tasks.find(x=>x.id===b.dataset.sdel);
+    if (t) { t.subtasks=t.subtasks.filter(x=>x.id!==b.dataset.sid); await save(); render(); toast('細項已刪除'); }
   }));
   el.querySelectorAll('[data-sadd]').forEach(b => {
-    const inp = document.getElementById(`si-${b.dataset.sadd}`);
-    const doAdd = async () => {
-      const text = inp ? inp.value.trim() : '';
+    const inp=document.getElementById(`si-${b.dataset.sadd}`);
+    const doAdd=async()=>{
+      const text=inp?inp.value.trim():'';
       if (!text) return;
-      const t = state.tasks.find(x=>x.id===b.dataset.sadd);
-      if (t) { t.subtasks.push({ id: uid6(), text, done: false }); await save(); render(); toast('細項已新增'); }
+      const t=state.tasks.find(x=>x.id===b.dataset.sadd);
+      if (t) { t.subtasks.push({id:uid6(),text,done:false}); await save(); render(); toast('細項已新增'); }
     };
-    b.addEventListener('click', doAdd);
-    if (inp) inp.addEventListener('keydown', e => { if (e.key==='Enter') doAdd(); });
+    b.addEventListener('click',doAdd);
+    if (inp) inp.addEventListener('keydown',e=>{if(e.key==='Enter')doAdd();});
   });
 }
-
+ 
 function renderModal() {
-  const area = document.getElementById('modalArea');
-  if (!showModal) { area.innerHTML=''; return; }
-
+  const area=document.getElementById('modalArea');
+  if (!showModal){area.innerHTML='';return;}
   if (showModal==='task') {
-    const opts = state.categories.map(c=>`<option value="${c.id}"${presetCat===c.id?' selected':''}>${c.name}</option>`).join('');
-    area.innerHTML = `<div class="overlay" id="ov"><div class="modal">
+    const opts=state.categories.map(c=>`<option value="${c.id}"${presetCat===c.id?' selected':''}>${c.name}</option>`).join('');
+    area.innerHTML=`<div class="overlay" id="ov"><div class="modal">
       <div class="modal-title">新增事項</div>
       <div class="form-row"><label>事項名稱</label><input id="mT" type="text" placeholder="輸入事項名稱..."></div>
       <div class="form-row"><label>業務類別</label><select id="mC">${opts}</select></div>
@@ -492,26 +490,29 @@ function renderModal() {
         <button class="btn btn-primary" id="mOk">儲存</button>
       </div>
     </div></div>`;
-    document.getElementById('ov').addEventListener('click', e => { if(e.target.id==='ov') closeModal(); });
-    document.getElementById('mX').addEventListener('click', closeModal);
-    if (presetDate) document.getElementById('mE').value = presetDate;
+    document.getElementById('ov').addEventListener('click',e=>{if(e.target.id==='ov')closeModal();});
+    document.getElementById('mX').addEventListener('click',closeModal);
+    if (presetDate) document.getElementById('mE').value=presetDate;
     document.getElementById('mT').focus();
-    document.getElementById('mOk').addEventListener('click', async () => {
-      const title = document.getElementById('mT').value.trim();
-      if (!title) { document.getElementById('mT').focus(); return; }
-      state.tasks.push({ id: uid6(), cat: document.getElementById('mC').value, title, dateStart: document.getElementById('mS').value, dateEnd: document.getElementById('mE').value, status: document.getElementById('mSt').value, note: document.getElementById('mN').value.trim(), subtasks: [] });
+    document.getElementById('mOk').addEventListener('click',async()=>{
+      const title=document.getElementById('mT').value.trim();
+      if (!title){document.getElementById('mT').focus();return;}
+      state.tasks.push({id:uid6(),cat:document.getElementById('mC').value,title,
+        dateStart:document.getElementById('mS').value,
+        dateEnd:document.getElementById('mE').value,
+        status:document.getElementById('mSt').value,
+        note:document.getElementById('mN').value.trim(),subtasks:[]});
       await save(); closeModal(); render(); toast('已新增');
     });
   }
-
   if (showModal==='manage') {
-    const rows = state.categories.map(c=>`<div class="cat-row">
+    const rows=state.categories.map(c=>`<div class="cat-row">
       <div class="section-dot" style="background:${c.color};width:10px;height:10px;flex-shrink:0"></div>
       <input class="ci" value="${c.name}" data-cid="${c.id}">
       <button class="task-del" data-dc="${c.id}">✕</button>
     </div>`).join('');
-    const sw = COLORS.map(col=>`<div class="swatch" data-col="${col}" style="background:${col}"></div>`).join('');
-    area.innerHTML = `<div class="overlay" id="ov2"><div class="modal">
+    const sw=COLORS.map(col=>`<div class="swatch" data-col="${col}" style="background:${col}"></div>`).join('');
+    area.innerHTML=`<div class="overlay" id="ov2"><div class="modal">
       <div class="modal-title">管理業務類別</div>
       <div id="catList">${rows}</div>
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
@@ -523,76 +524,47 @@ function renderModal() {
         <button class="btn btn-primary" id="mAdd">新增類別</button>
       </div>
     </div></div>`;
-    let picked = COLORS[0];
+    let picked=COLORS[0];
     document.querySelector(`.swatch[data-col="${picked}"]`).classList.add('sel');
-    document.getElementById('ov2').addEventListener('click', e => { if(e.target.id==='ov2') closeModal(); });
-    document.getElementById('mX2').addEventListener('click', closeModal);
-    document.querySelectorAll('.swatch').forEach(s => s.addEventListener('click', () => {
-      picked = s.dataset.col;
+    document.getElementById('ov2').addEventListener('click',e=>{if(e.target.id==='ov2')closeModal();});
+    document.getElementById('mX2').addEventListener('click',closeModal);
+    document.querySelectorAll('.swatch').forEach(s=>s.addEventListener('click',()=>{
+      picked=s.dataset.col;
       document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('sel'));
       s.classList.add('sel');
     }));
-    document.querySelectorAll('.ci').forEach(inp => inp.addEventListener('change', async () => {
-      const c = state.categories.find(x=>x.id===inp.dataset.cid);
-      if (c && inp.value.trim()) { c.name=inp.value.trim(); await save(); toast('已更新'); }
+    document.querySelectorAll('.ci').forEach(inp=>inp.addEventListener('change',async()=>{
+      const c=state.categories.find(x=>x.id===inp.dataset.cid);
+      if(c&&inp.value.trim()){c.name=inp.value.trim();await save();toast('已更新');}
     }));
-    document.querySelectorAll('[data-dc]').forEach(b => b.addEventListener('click', async () => {
-      if (state.categories.length<=1) { toast('至少保留一個類別'); return; }
-      if (!confirm('刪除類別也會刪除其下所有事項，確定嗎？')) return;
-      const id = b.dataset.dc;
-      state.categories = state.categories.filter(x=>x.id!==id);
-      state.tasks = state.tasks.filter(x=>x.cat!==id);
-      await save(); closeModal(); render(); toast('已刪除');
+    document.querySelectorAll('[data-dc]').forEach(b=>b.addEventListener('click',async()=>{
+      if(state.categories.length<=1){toast('至少保留一個類別');return;}
+      if(!confirm('刪除類別也會刪除其下所有事項，確定嗎？'))return;
+      const id=b.dataset.dc;
+      state.categories=state.categories.filter(x=>x.id!==id);
+      state.tasks=state.tasks.filter(x=>x.cat!==id);
+      await save();closeModal();render();toast('已刪除');
     }));
-    document.getElementById('mAdd').addEventListener('click', async () => {
-      const name = document.getElementById('ncn').value.trim();
-      if (!name) return;
-      state.categories.push({ id: uid6(), name, color: picked });
-      await save(); closeModal(); render(); toast('已新增類別');
+    document.getElementById('mAdd').addEventListener('click',async()=>{
+      const name=document.getElementById('ncn').value.trim();
+      if(!name)return;
+      state.categories.push({id:uid6(),name,color:picked});
+      await save();closeModal();render();toast('已新增類別');
     });
   }
 }
-
-function closeModal() { showModal=null; presetCat=null; presetDate=null; render(); }
-
-document.getElementById('addBtn').addEventListener('click', () => { showModal='task'; presetCat=null; render(); });
-document.getElementById('manageBtn').addEventListener('click', () => { showModal='manage'; render(); });
-
-async function syncWithGoogle() {
-  const currentUser = auth.currentUser;
-  try {
-    if (currentUser && currentUser.isAnonymous) {
-      await linkWithPopup(currentUser, provider);
-      const btn = document.getElementById('syncBtn');
-      btn.textContent = '✅ 已同步';
-      btn.style.color = 'var(--green)';
-      toast('✅ 已綁定 Google 帳號，所有裝置都能同步了');
-    } else {
-      await signInWithPopup(auth, provider);
-    }
-  } catch(e) {
-    if (e.code === 'auth/credential-already-in-use') {
-      await signInWithPopup(auth, provider);
-      await load(); render();
-      toast('✅ 已同步至 Google 帳號資料');
-    } else {
-      toast('登入失敗：' + (e.message || e.code));
-    }
-  }
-}
-
-document.getElementById('syncBtn').addEventListener('click', syncWithGoogle);
-
+ 
+function closeModal(){showModal=null;presetCat=null;presetDate=null;render();}
+ 
+document.getElementById('addBtn').addEventListener('click',()=>{showModal='task';presetCat=null;render();});
+document.getElementById('manageBtn').addEventListener('click',()=>{showModal='manage';render();});
+ 
+// 匿名登入只是為了讓 Firebase 允許讀寫，資料存在固定路徑
 onAuthStateChanged(auth, async user => {
   if (user) {
-    uid = user.uid;
-    if (!user.isAnonymous) {
-      const btn = document.getElementById('syncBtn');
-      if (btn) { btn.textContent = '✅ 已同步'; btn.style.color = 'var(--green)'; }
-    }
     await load();
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
+    document.getElementById('loading').style.display='none';
+    document.getElementById('app').style.display='block';
     render();
   }
 });
@@ -602,3 +574,4 @@ signInAnonymously(auth).catch(() => {
 </script>
 </body>
 </html>
+ 
